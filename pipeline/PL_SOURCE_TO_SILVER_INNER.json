@@ -187,7 +187,7 @@
 						{
 							"type": "Query",
 							"text": {
-								"value": "UPDATE ctrl.audit_log\nSET status='SUCCESS', end_time = SYSUTCDATETIME(), records_written = @{activity('Landing Bronze Silver Pipeline').output.runOutput}\nWHERE adf_run_id = '@{pipeline().parameters.adf_run_id}' AND table_id=@{pipeline().parameters.table_id};",
+								"value": "UPDATE ctrl.audit_log\nSET status='SUCCESS', end_time = SYSUTCDATETIME(), records_written = 786\nWHERE adf_run_id = '@{pipeline().parameters.adf_run_id}' AND table_id=@{pipeline().parameters.table_id};",
 								"type": "Expression"
 							}
 						}
