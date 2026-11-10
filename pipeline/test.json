@@ -5,6 +5,8 @@
 			{
 				"name": "Copy data1",
 				"type": "Copy",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [],
 				"policy": {
 					"timeout": "0.12:00:00",
@@ -55,6 +57,67 @@
 						}
 					}
 				]
+			},
+			{
+				"name": "Get_Job_Run_inner_copy1",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "Get_Databricks_PAT",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"headers": {
+						"Authorization": {
+							"value": "@concat(\n    'Bearer ',\n    activity('Get_Databricks_PAT').output.value\n)",
+							"type": "Expression"
+						},
+						"Accept": "application/json"
+					},
+					"url": {
+						"value": "@concat(\n  'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=249243301061409'\n)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Get_Databricks_PAT",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": true,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"headers": {
+						"Accept": "application/json"
+					},
+					"url": {
+						"value": "https://keyVault4Caresync.vault.azure.net/secrets/adb-token?api-version=7.4",
+						"type": "Expression"
+					},
+					"authentication": {
+						"type": "MSI",
+						"resource": "https://vault.azure.net"
+					}
+				}
 			}
 		],
 		"annotations": []
