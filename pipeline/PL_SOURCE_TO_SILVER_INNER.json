@@ -219,7 +219,7 @@
 						"Accept": "application/json"
 					},
 					"url": {
-						"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=',\n    activity('Landing Bronze Silver Pipeline').output.runId)\n)",
+						"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=',\n    string(activity('Landing Bronze Silver Pipeline').output.runId)\n)",
 						"type": "Expression"
 					}
 				}
@@ -255,6 +255,40 @@
 					"authentication": {
 						"type": "MSI",
 						"resource": "https://vault.azure.net"
+					}
+				}
+			},
+			{
+				"name": "Get_Job_Run_inner",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "Get_Job_Run",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"headers": {
+						"Authorization": {
+							"value": "@concat(\n    'Bearer ',\n    activity('Get_Databricks_PAT').output.value\n)",
+							"type": "Expression"
+						},
+						"Accept": "application/json"
+					},
+					"url": {
+						"value": "@concat(\n  'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/list?job_id=903072939284335&limit=25'\n)",
+						"type": "Expression"
 					}
 				}
 			}
