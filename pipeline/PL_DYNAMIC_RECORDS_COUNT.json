@@ -208,7 +208,7 @@
 				"typeProperties": {
 					"variableName": "silver_output",
 					"value": {
-						"value": "@activity('Filter_Silver_Task').output.notebook_output.result",
+						"value": "@activity('Get_Silver_Task_Output').output.notebook_output.result",
 						"type": "Expression"
 					}
 				}
