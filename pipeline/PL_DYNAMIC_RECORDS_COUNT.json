@@ -190,7 +190,7 @@
 				}
 			},
 			{
-				"name": "Silver Output",
+				"name": "Set Silver Output",
 				"type": "SetVariable",
 				"dependsOn": [
 					{
@@ -204,6 +204,7 @@
 					"secureOutput": false,
 					"secureInput": false
 				},
+				"userProperties": [],
 				"typeProperties": {
 					"variableName": "pipelineReturnValue",
 					"value": [
