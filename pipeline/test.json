@@ -3,63 +3,7 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "Copy data1",
-				"type": "Copy",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"source": {
-						"type": "PostgreSqlV2Source",
-						"query": "select * from PUBLIC.hospitals",
-						"queryTimeout": "02:00:00"
-					},
-					"sink": {
-						"type": "ParquetSink",
-						"storeSettings": {
-							"type": "AzureBlobFSWriteSettings"
-						},
-						"formatSettings": {
-							"type": "ParquetWriteSettings"
-						}
-					},
-					"enableStaging": false,
-					"translator": {
-						"type": "TabularTranslator",
-						"typeConversion": true,
-						"typeConversionSettings": {
-							"allowDataTruncation": true,
-							"treatBooleanAsNumber": false
-						}
-					}
-				},
-				"inputs": [
-					{
-						"referenceName": "DS_PostgreSql",
-						"type": "DatasetReference"
-					}
-				],
-				"outputs": [
-					{
-						"referenceName": "DS_adls_parquet",
-						"type": "DatasetReference",
-						"parameters": {
-							"container": "landing",
-							"folder": "test"
-						}
-					}
-				]
-			},
-			{
-				"name": "Get_Job_Run_inner_copy1",
+				"name": "Get_Job_id",
 				"type": "WebActivity",
 				"dependsOn": [
 					{
@@ -87,7 +31,7 @@
 						"Accept": "application/json"
 					},
 					"url": {
-						"value": "@concat(\n  'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=249243301061409'\n)",
+						"value": "@concat(' https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=606773495577626')",
 						"type": "Expression"
 					}
 				}
@@ -116,6 +60,97 @@
 					"authentication": {
 						"type": "MSI",
 						"resource": "https://vault.azure.net"
+					}
+				}
+			},
+			{
+				"name": "Get_Job_Inner_run_id",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "Get_Job_id",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"headers": {
+						"Authorization": {
+							"value": "@concat(\n    'Bearer ',\n    activity('Get_Databricks_PAT').output.value\n)",
+							"type": "Expression"
+						},
+						"Accept": "application/json"
+					},
+					"url": {
+						"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/list?job_id=',\n    string(activity('Get_Job_id').output.tasks[0].run_job_task.job_id),\n    '&limit=25',\n    '&expand_tasks=false',\n    '&start_time_from=',\n    string(activity('Get_Job_id').output.start_time),\n    '&start_time_to=',\n    string(activity('Get_Job_id').output.end_time)\n)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Get_Job_Run_Task_Key",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "Get_Job_Inner_run_id",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"headers": {
+						"Authorization": {
+							"value": "@concat(\n    'Bearer ',\n    activity('Get_Databricks_PAT').output.value\n)",
+							"type": "Expression"
+						},
+						"Accept": "application/json"
+					},
+					"url": {
+						"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].run_id),\n    '&limit=25',\n    '&expand_tasks=false',\n    '&start_time_from=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].start_time),\n    '&start_time_to=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].end_time)\n)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Filter_Silver_Task",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "Get_Job_Run_Task_Key",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Get_Job_Run_Task_Key').output.tasks",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@equals(item().task_key, 'bronze_to_silver')",
+						"type": "Expression"
 					}
 				}
 			}
