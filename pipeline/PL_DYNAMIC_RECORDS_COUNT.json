@@ -1,6 +1,7 @@
 {
-	"name": "test",
+	"name": "PL_DYNAMIC_RECORDS_COUNT",
 	"properties": {
+		"description": "getting records count from web activity with authentication",
 		"activities": [
 			{
 				"name": "Get_Job_id",
@@ -150,6 +151,40 @@
 					},
 					"condition": {
 						"value": "@equals(item().task_key, 'bronze_to_silver')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Get_Silver_Task_Output",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "Filter_Silver_Task",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"headers": {
+						"Authorization": {
+							"value": "@concat(\n    'Bearer ',\n    activity('Get_Databricks_PAT').output.value\n)",
+							"type": "Expression"
+						},
+						"Accept": "application/json"
+					},
+					"url": {
+						"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get-output?run_id=',\n    string(activity('Filter_Silver_Task').output.value[0].run_id)\n)",
 						"type": "Expression"
 					}
 				}
