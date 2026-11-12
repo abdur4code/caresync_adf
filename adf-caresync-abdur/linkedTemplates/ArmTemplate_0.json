@@ -252,13 +252,21 @@
 							"secureOutput": false,
 							"secureInput": false
 						},
-						"userProperties": [],
+						"userProperties": [
+							{}
+						],
 						"typeProperties": {
-							"variableName": "silver_output",
-							"value": {
-								"value": "@activity('Get_Silver_Task_Output').output.notebook_output.result",
-								"type": "Expression"
-							}
+							"variableName": "pipelineReturnValue",
+							"value": [
+								{
+									"key": "silver_output",
+									"value": {
+										"type": "Expression",
+										"content": "@activity('Get_Silver_Task_Output').output.notebook_output.result"
+									}
+								}
+							],
+							"setSystemVariable": true
 						}
 					}
 				],
@@ -268,11 +276,6 @@
 				"parameters": {
 					"run_id": {
 						"type": "string"
-					}
-				},
-				"variables": {
-					"silver_output": {
-						"type": "String"
 					}
 				},
 				"annotations": []
@@ -945,7 +948,7 @@
 								{
 									"type": "Query",
 									"text": {
-										"value": "UPDATE ctrl.audit_log\nSET status='SUCCESS', end_time = SYSUTCDATETIME(), records_written = @{activity('Get Silver OutPut').output.pipelineReturnValue.silver_output.value}\nWHERE adf_run_id = '@{pipeline().parameters.adf_run_id}' AND table_id=@{pipeline().parameters.table_id};",
+										"value": "UPDATE ctrl.audit_log\nSET status='SUCCESS', end_time = SYSUTCDATETIME(), records_written = @{int(activity('Get Silver OutPut').output.pipelineReturnValue.silver_output)}\nWHERE adf_run_id = '@{pipeline().parameters.adf_run_id}' AND table_id=@{pipeline().parameters.table_id};",
 										"type": "Expression"
 									}
 								}
