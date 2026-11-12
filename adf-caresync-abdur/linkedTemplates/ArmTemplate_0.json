@@ -930,7 +930,7 @@
 						],
 						"policy": {
 							"timeout": "0.12:00:00",
-							"retry": 2,
+							"retry": 0,
 							"retryIntervalInSeconds": 30,
 							"secureOutput": false,
 							"secureInput": false
@@ -945,7 +945,7 @@
 								{
 									"type": "Query",
 									"text": {
-										"value": "UPDATE ctrl.audit_log\nSET status='SUCCESS', end_time = SYSUTCDATETIME(), records_written = @{activity('Get Silver OutPut').output.pipelineReturnValue.silver_output}\nWHERE adf_run_id = '@{pipeline().parameters.adf_run_id}' AND table_id=@{pipeline().parameters.table_id};",
+										"value": "UPDATE ctrl.audit_log\nSET status='SUCCESS', end_time = SYSUTCDATETIME(), records_written = @{activity('Get Silver OutPut').output.pipelineReturnValue.silver_output.value}\nWHERE adf_run_id = '@{pipeline().parameters.adf_run_id}' AND table_id=@{pipeline().parameters.table_id};",
 										"type": "Expression"
 									}
 								}
