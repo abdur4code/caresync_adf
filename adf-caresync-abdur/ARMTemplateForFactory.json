@@ -335,6 +335,242 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/PL_DYNAMIC_RECORDS_COUNT')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "getting records count from web activity with authentication",
+				"activities": [
+					{
+						"name": "Get_Job_id",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "Get_Databricks_PAT",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "GET",
+							"headers": {
+								"Authorization": {
+									"value": "@concat(\n    'Bearer ',\n    activity('Get_Databricks_PAT').output.value\n)",
+									"type": "Expression"
+								},
+								"Accept": "application/json"
+							},
+							"url": {
+								"value": "@concat(' https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=', pipeline().parameters.run_id)",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Get_Databricks_PAT",
+						"type": "WebActivity",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": true,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "GET",
+							"headers": {
+								"Accept": "application/json"
+							},
+							"url": {
+								"value": "https://keyVault4Caresync.vault.azure.net/secrets/adb-token?api-version=7.4",
+								"type": "Expression"
+							},
+							"authentication": {
+								"type": "MSI",
+								"resource": "https://vault.azure.net"
+							}
+						}
+					},
+					{
+						"name": "Get_Job_Inner_run_id",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "Get_Job_id",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "GET",
+							"headers": {
+								"Authorization": {
+									"value": "@concat(\n    'Bearer ',\n    activity('Get_Databricks_PAT').output.value\n)",
+									"type": "Expression"
+								},
+								"Accept": "application/json"
+							},
+							"url": {
+								"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/list?job_id=',\n    string(activity('Get_Job_id').output.tasks[0].run_job_task.job_id),\n    '&limit=25',\n    '&expand_tasks=false',\n    '&start_time_from=',\n    string(activity('Get_Job_id').output.start_time),\n    '&start_time_to=',\n    string(activity('Get_Job_id').output.end_time)\n)",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Get_Job_Run_Task_Key",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "Get_Job_Inner_run_id",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "GET",
+							"headers": {
+								"Authorization": {
+									"value": "@concat(\n    'Bearer ',\n    activity('Get_Databricks_PAT').output.value\n)",
+									"type": "Expression"
+								},
+								"Accept": "application/json"
+							},
+							"url": {
+								"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].run_id),\n    '&limit=25',\n    '&expand_tasks=false',\n    '&start_time_from=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].start_time),\n    '&start_time_to=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].end_time)\n)",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Filter_Silver_Task",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "Get_Job_Run_Task_Key",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Get_Job_Run_Task_Key').output.tasks",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@equals(item().task_key, 'bronze_to_silver')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Get_Silver_Task_Output",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "Filter_Silver_Task",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "GET",
+							"headers": {
+								"Authorization": {
+									"value": "@concat(\n    'Bearer ',\n    activity('Get_Databricks_PAT').output.value\n)",
+									"type": "Expression"
+								},
+								"Accept": "application/json"
+							},
+							"url": {
+								"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get-output?run_id=',\n    string(activity('Filter_Silver_Task').output.value[0].run_id)\n)",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Set Silver Output",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Get_Silver_Task_Output",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "pipelineReturnValue",
+							"value": [
+								{
+									"key": "silver_output",
+									"value": {
+										"type": "Expression",
+										"content": "@activity('Get_Silver_Task_Output').output.notebook_output.result"
+									}
+								}
+							],
+							"setSystemVariable": true
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"run_id": {
+						"type": "string"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/PL_SOURCE_TO_SELVER_MAIN')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -779,244 +1015,6 @@
 				"[concat(variables('factoryId'), '/linkedServices/LS_AzureSqlDatabase')]",
 				"[concat(variables('factoryId'), '/pipelines/PL_DYNAMIC_RECORDS_COUNT')]"
 			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/PL_DYNAMIC_RECORDS_COUNT')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "getting records count from web activity with authentication",
-				"activities": [
-					{
-						"name": "Get_Job_id",
-						"type": "WebActivity",
-						"dependsOn": [
-							{
-								"activity": "Get_Databricks_PAT",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"method": "GET",
-							"headers": {
-								"Authorization": {
-									"value": "@concat(\n    'Bearer ',\n    activity('Get_Databricks_PAT').output.value\n)",
-									"type": "Expression"
-								},
-								"Accept": "application/json"
-							},
-							"url": {
-								"value": "@concat(' https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=', pipeline().parameters.run_id)",
-								"type": "Expression"
-							}
-						}
-					},
-					{
-						"name": "Get_Databricks_PAT",
-						"type": "WebActivity",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": true,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"method": "GET",
-							"headers": {
-								"Accept": "application/json"
-							},
-							"url": {
-								"value": "https://keyVault4Caresync.vault.azure.net/secrets/adb-token?api-version=7.4",
-								"type": "Expression"
-							},
-							"authentication": {
-								"type": "MSI",
-								"resource": "https://vault.azure.net"
-							}
-						}
-					},
-					{
-						"name": "Get_Job_Inner_run_id",
-						"type": "WebActivity",
-						"dependsOn": [
-							{
-								"activity": "Get_Job_id",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"method": "GET",
-							"headers": {
-								"Authorization": {
-									"value": "@concat(\n    'Bearer ',\n    activity('Get_Databricks_PAT').output.value\n)",
-									"type": "Expression"
-								},
-								"Accept": "application/json"
-							},
-							"url": {
-								"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/list?job_id=',\n    string(activity('Get_Job_id').output.tasks[0].run_job_task.job_id),\n    '&limit=25',\n    '&expand_tasks=false',\n    '&start_time_from=',\n    string(activity('Get_Job_id').output.start_time),\n    '&start_time_to=',\n    string(activity('Get_Job_id').output.end_time)\n)",
-								"type": "Expression"
-							}
-						}
-					},
-					{
-						"name": "Get_Job_Run_Task_Key",
-						"type": "WebActivity",
-						"dependsOn": [
-							{
-								"activity": "Get_Job_Inner_run_id",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"method": "GET",
-							"headers": {
-								"Authorization": {
-									"value": "@concat(\n    'Bearer ',\n    activity('Get_Databricks_PAT').output.value\n)",
-									"type": "Expression"
-								},
-								"Accept": "application/json"
-							},
-							"url": {
-								"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].run_id),\n    '&limit=25',\n    '&expand_tasks=false',\n    '&start_time_from=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].start_time),\n    '&start_time_to=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].end_time)\n)",
-								"type": "Expression"
-							}
-						}
-					},
-					{
-						"name": "Filter_Silver_Task",
-						"type": "Filter",
-						"dependsOn": [
-							{
-								"activity": "Get_Job_Run_Task_Key",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('Get_Job_Run_Task_Key').output.tasks",
-								"type": "Expression"
-							},
-							"condition": {
-								"value": "@equals(item().task_key, 'bronze_to_silver')",
-								"type": "Expression"
-							}
-						}
-					},
-					{
-						"name": "Get_Silver_Task_Output",
-						"type": "WebActivity",
-						"dependsOn": [
-							{
-								"activity": "Filter_Silver_Task",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"method": "GET",
-							"headers": {
-								"Authorization": {
-									"value": "@concat(\n    'Bearer ',\n    activity('Get_Databricks_PAT').output.value\n)",
-									"type": "Expression"
-								},
-								"Accept": "application/json"
-							},
-							"url": {
-								"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get-output?run_id=',\n    string(activity('Filter_Silver_Task').output.value[0].run_id)\n)",
-								"type": "Expression"
-							}
-						}
-					},
-					{
-						"name": "Silver Output",
-						"type": "SetVariable",
-						"dependsOn": [
-							{
-								"activity": "Get_Silver_Task_Output",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [
-							{}
-						],
-						"typeProperties": {
-							"variableName": "pipelineReturnValue",
-							"value": [
-								{
-									"key": "silver_output",
-									"value": {
-										"type": "Expression",
-										"content": "@activity('Get_Silver_Task_Output').output.notebook_output.result"
-									}
-								}
-							],
-							"setSystemVariable": true
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"parameters": {
-					"run_id": {
-						"type": "string"
-					}
-				},
-				"annotations": []
-			},
-			"dependsOn": []
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/DS_PostgreSql')]",
