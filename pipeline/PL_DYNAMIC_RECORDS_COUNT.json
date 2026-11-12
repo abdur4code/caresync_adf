@@ -32,7 +32,7 @@
 						"Accept": "application/json"
 					},
 					"url": {
-						"value": "@concat(' https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=606773495577626')",
+						"value": "@concat(' https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=', pipeline().parameters.run_id)",
 						"type": "Expression"
 					}
 				}
@@ -190,6 +190,11 @@
 				}
 			}
 		],
+		"parameters": {
+			"run_id": {
+				"type": "string"
+			}
+		},
 		"annotations": []
 	}
 }

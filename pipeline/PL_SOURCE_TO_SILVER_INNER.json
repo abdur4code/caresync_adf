@@ -147,7 +147,10 @@
 							"value": "@activity('Read table details').output.firstRow.source_system",
 							"type": "Expression"
 						},
-						"table_name": "@activity('Read table details').output.firstRow.bronze_table_name",
+						"table_name": {
+							"value": "@activity('Read table details').output.firstRow.bronze_table_name",
+							"type": "Expression"
+						},
 						"landing_timestamp": {
 							"value": "@variables('start_time')",
 							"type": "Expression"
@@ -191,74 +194,6 @@
 				}
 			},
 			{
-				"name": "Get_Job_Run",
-				"type": "WebActivity",
-				"dependsOn": [
-					{
-						"activity": "Get_Databricks_PAT",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"method": "GET",
-					"headers": {
-						"Authorization": {
-							"value": "@concat(\n    'Bearer ',\n    activity('Get_Databricks_PAT').output.value\n)",
-							"type": "Expression"
-						},
-						"Accept": "application/json"
-					},
-					"url": {
-						"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=',\n    string(activity('Landing Bronze Silver Pipeline').output.runId)\n)",
-						"type": "Expression"
-					}
-				}
-			},
-			{
-				"name": "Get_Databricks_PAT",
-				"type": "WebActivity",
-				"dependsOn": [
-					{
-						"activity": "Landing Bronze Silver Pipeline",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": true,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"method": "GET",
-					"headers": {
-						"Accept": "application/json"
-					},
-					"url": {
-						"value": "https://keyVault4Caresync.vault.azure.net/secrets/adb-token?api-version=7.4",
-						"type": "Expression"
-					},
-					"authentication": {
-						"type": "MSI",
-						"resource": "https://vault.azure.net"
-					}
-				}
-			},
-			{
 				"name": "Get_Job_Run_inner",
 				"type": "WebActivity",
 				"state": "Inactive",
@@ -288,36 +223,31 @@
 				}
 			},
 			{
-				"name": "Get_inner_job_run",
-				"type": "WebActivity",
+				"name": "Get Silver OutPut",
+				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "Get_Job_Run",
+						"activity": "Landing Bronze Silver Pipeline",
 						"dependencyConditions": [
 							"Succeeded"
 						]
 					}
 				],
 				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
 					"secureInput": false
 				},
 				"userProperties": [],
 				"typeProperties": {
-					"method": "GET",
-					"headers": {
-						"Authorization": {
-							"value": "@concat(\n    'Bearer ',\n    activity('Get_Databricks_PAT').output.value\n)",
-							"type": "Expression"
-						},
-						"Accept": "application/json"
+					"pipeline": {
+						"referenceName": "PL_DYNAMIC_RECORDS_COUNT",
+						"type": "PipelineReference"
 					},
-					"url": {
-						"value": "@concat(\n  'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=249243301061409'\n)",
-						"type": "Expression"
+					"waitOnCompletion": true,
+					"parameters": {
+						"run_id": {
+							"value": "@activity('Landing Bronze Silver Pipeline').output.runId",
+							"type": "Expression"
+						}
 					}
 				}
 			}
