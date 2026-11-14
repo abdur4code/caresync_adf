@@ -431,7 +431,7 @@
 								"Accept": "application/json"
 							},
 							"url": {
-								"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/list?job_id=',\n    string(activity('Get_Job_id').output.tasks[0].run_job_task.job_id),\n    '&limit=25'\n)",
+								"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/list?job_id=',\n    string(activity('Get_Job_id').output.tasks[0].run_job_task.job_id),\n    '&limit=25',\n    '&expand_tasks=false',\n    '&start_time_from=',\n    string(activity('Get_Job_id').output.start_time),\n    '&start_time_to=',\n    string(activity('Get_Job_id').output.end_time)\n)",
 								"type": "Expression"
 							}
 						}
@@ -465,7 +465,7 @@
 								"Accept": "application/json"
 							},
 							"url": {
-								"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].run_id))",
+								"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].run_id),\n    '&limit=25',\n    '&expand_tasks=false',\n    '&start_time_from=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].start_time),\n    '&start_time_to=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].end_time)\n)",
 								"type": "Expression"
 							}
 						}
@@ -494,8 +494,8 @@
 						}
 					},
 					{
-						"name": "Get_Silver_Task_Output",
-						"type": "WebActivity",
+						"name": "Until_Silver_Completed",
+						"type": "Until",
 						"dependsOn": [
 							{
 								"activity": "Filter_Silver_Task",
@@ -504,57 +504,199 @@
 								]
 							}
 						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
 						"userProperties": [],
 						"typeProperties": {
-							"method": "GET",
-							"headers": {
-								"Authorization": {
-									"value": "@concat(\n    'Bearer ',\n    activity('Get_Databricks_PAT').output.value\n)",
-									"type": "Expression"
-								},
-								"Accept": "application/json"
-							},
-							"url": {
-								"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get-output?run_id=',\n    string(activity('Filter_Silver_Task').output.value[0].run_id)\n)",
+							"expression": {
+								"value": "@or(\n    equals(variables('v_silver_lifecycle'), 'TERMINATED'),\n    or(\n        equals(variables('v_silver_lifecycle'), 'SKIPPED'),\n        equals(variables('v_silver_lifecycle'), 'INTERNAL_ERROR')\n    )\n)",
 								"type": "Expression"
-							}
+							},
+							"activities": [
+								{
+									"name": "Get_Silver_Task_Status",
+									"type": "WebActivity",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"method": "GET",
+										"headers": {
+											"Authorization": {
+												"value": "@concat(\n    'Bearer ',\n    activity('Get_Databricks_PAT').output.value\n)",
+												"type": "Expression"
+											},
+											"Accept": "application/json"
+										},
+										"url": {
+											"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=',\n    string(activity('Filter_Silver_Task').output.value[0].run_id)\n)",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "Set_Silver_Lifecycle",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "Get_Silver_Task_Status",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "v_silver_lifecycle",
+										"value": {
+											"value": "@activity('Get_Silver_Task_Status').output.state.life_cycle_state",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "Set_Silver_Result",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "Set_Silver_Lifecycle",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "v_silver_result",
+										"value": {
+											"value": "@string(\n    coalesce(\n        activity('Get_Silver_Task_Status').output.state.result_state,\n        'UNKNOWN'\n    )\n)",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "Wait1",
+									"type": "Wait",
+									"dependsOn": [
+										{
+											"activity": "Set_Silver_Result",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"waitTimeInSeconds": 20
+									}
+								}
+							],
+							"timeout": "06:00:00"
 						}
 					},
 					{
-						"name": "Set Silver Output",
-						"type": "SetVariable",
+						"name": "If_Silver_Success",
+						"type": "IfCondition",
 						"dependsOn": [
 							{
-								"activity": "Get_Silver_Task_Output",
+								"activity": "Until_Silver_Completed",
 								"dependencyConditions": [
 									"Succeeded"
 								]
 							}
 						],
-						"policy": {
-							"secureOutput": false,
-							"secureInput": false
-						},
 						"userProperties": [],
 						"typeProperties": {
-							"variableName": "pipelineReturnValue",
-							"value": [
+							"expression": {
+								"value": "@and(\n    equals(variables('v_silver_lifecycle'), 'TERMINATED'),\n    equals(variables('v_silver_result'), 'SUCCESS')\n)",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
 								{
-									"key": "silver_output",
-									"value": {
-										"type": "Expression",
-										"content": "@activity('Get_Silver_Task_Output').output.notebook_output.result"
+									"name": "Fail1",
+									"type": "Fail",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"message": {
+											"value": "@concat(\n    'Silver notebook did not succeed. Lifecycle: ',\n    variables('v_silver_lifecycle'),\n    ', Result: ',\n    variables('v_silver_result')\n)",
+											"type": "Expression"
+										},
+										"errorCode": "500"
 									}
 								}
 							],
-							"setSystemVariable": true
+							"ifTrueActivities": [
+								{
+									"name": "Get_Silver_Task_Output",
+									"type": "WebActivity",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"method": "GET",
+										"headers": {
+											"Authorization": {
+												"value": "@concat(\n    'Bearer ',\n    activity('Get_Databricks_PAT').output.value\n)",
+												"type": "Expression"
+											},
+											"Accept": "application/json"
+										},
+										"url": {
+											"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get-output?run_id=',\n    string(activity('Filter_Silver_Task').output.value[0].run_id)\n)",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "Set Silver Output",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "Get_Silver_Task_Output",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "pipelineReturnValue",
+										"value": [
+											{
+												"key": "silver_output",
+												"value": {
+													"type": "Expression",
+													"content": "@activity('Get_Silver_Task_Output').output.notebook_output.result"
+												}
+											}
+										],
+										"setSystemVariable": true
+									}
+								}
+							]
 						}
 					}
 				],
@@ -564,6 +706,14 @@
 				"parameters": {
 					"run_id": {
 						"type": "string"
+					}
+				},
+				"variables": {
+					"v_silver_lifecycle": {
+						"type": "String"
+					},
+					"v_silver_result": {
+						"type": "String"
 					}
 				},
 				"annotations": []
