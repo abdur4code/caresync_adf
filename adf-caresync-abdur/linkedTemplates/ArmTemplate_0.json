@@ -141,7 +141,7 @@
 								"Accept": "application/json"
 							},
 							"url": {
-								"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/list?job_id=',\n    string(activity('Get_Job_id').output.tasks[0].run_job_task.job_id),\n    '&limit=25',\n    '&start_time_from=',\n    string(activity('Get_Job_id').output.start_time)\n)",
+								"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/list?job_id=',\n    string(activity('Get_Job_id').output.tasks[0].run_job_task.job_id),\n    '&limit=25'\n)",
 								"type": "Expression"
 							}
 						}
