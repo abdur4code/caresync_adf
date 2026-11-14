@@ -103,7 +103,7 @@
 				"type": "WebActivity",
 				"dependsOn": [
 					{
-						"activity": "Get_Job_Inner_run_id",
+						"activity": "Filter_Child_Run",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -127,7 +127,7 @@
 						"Accept": "application/json"
 					},
 					"url": {
-						"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].run_id),\n    '&limit=25',\n    '&expand_tasks=false',\n    '&start_time_from=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].start_time),\n    '&start_time_to=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].end_time)\n)",
+						"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=',\n    string(activity('Filter_Child_Run').output.value[0].run_id)\n)",
 						"type": "Expression"
 					}
 				}
@@ -359,6 +359,29 @@
 							}
 						}
 					]
+				}
+			},
+			{
+				"name": "Filter_Child_Run",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "Get_Job_Inner_run_id",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Get_Job_Inner_run_id').output.runs",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@equals(\n    string(item().trigger_info.run_id),\n    string(activity('Get_Job_id').output.tasks[0].run_id)\n)",
+						"type": "Expression"
+					}
 				}
 			}
 		],
