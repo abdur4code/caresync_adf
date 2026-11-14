@@ -93,7 +93,7 @@
 						"Accept": "application/json"
 					},
 					"url": {
-						"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/list?job_id=',\n    string(activity('Get_Job_id').output.tasks[0].run_job_task.job_id),\n    '&limit=25',\n    '&expand_tasks=false',\n    '&start_time_from=',\n    string(activity('Get_Job_id').output.start_time),\n    '&start_time_to=',\n    string(activity('Get_Job_id').output.end_time)\n)",
+						"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?job_id=',\n    string(activity('Get_Job_id').output.tasks[0].run_job_task.job_id)\n)",
 						"type": "Expression"
 					}
 				}
@@ -127,7 +127,7 @@
 						"Accept": "application/json"
 					},
 					"url": {
-						"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].run_id),\n    '&limit=25',\n    '&expand_tasks=false',\n    '&start_time_from=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].start_time),\n    '&start_time_to=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].end_time)\n)",
+						"value": "@concat(\n    'https://adb-7405616476980002.2.azuredatabricks.net/api/2.2/jobs/runs/get?run_id=',\n    string(activity('Get_Job_Inner_run_id').output.runs[0].run_id))",
 						"type": "Expression"
 					}
 				}
