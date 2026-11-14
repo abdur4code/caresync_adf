@@ -222,8 +222,7 @@
 		],
 		"parameters": {
 			"run_id": {
-				"type": "string",
-				"defaultValue": "92480663215751"
+				"type": "string"
 			}
 		},
 		"annotations": []
